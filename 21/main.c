@@ -6,9 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define X_SIZE 11
-#define Y_SIZE 11
-#define STEPS 10
+#define X_SIZE 131
+#define Y_SIZE 131
+#define STEPS (size_t)26501365
 
 unsigned long long gcd(unsigned long long a, unsigned long long b) {
   while (a != b) {
@@ -66,7 +66,7 @@ int main() {
     y++;
   }
 
-  size_t cs_size = STEPS * 2 * STEPS * 2;
+  size_t cs_size = (STEPS * 2 + 1) * (STEPS * 2 + 1);
   char *cs = calloc(cs_size, sizeof(char));
 
   for (int i = 0; i < Y_SIZE; i++) {
@@ -86,46 +86,61 @@ int main() {
   m[start.y][start.x] = '.';
 
   while (n_len > 0) {
-    printf("n_len: %zu\n", n_len);
+    /* printf("n_len: %zu\n", n_len); */
     n_tmp_len = 0;
     for (int i = 0; i < n_len; i++) {
       Node curr = ns[i];
 
+      int y = curr.y < 0 ? (curr.y % Y_SIZE + Y_SIZE) % Y_SIZE : curr.y % Y_SIZE;
+      int x = curr.x < 0 ? (curr.x % X_SIZE + X_SIZE) % X_SIZE : curr.x % X_SIZE;
+
       if (curr.dist % 2 == 0) {
         res++;
-        cs[(STEPS + curr.y) * STEPS * 2 + (STEPS + curr.x)] = 'v';
+        cs[(STEPS + curr.y - start.y) * STEPS * 2 +
+           (STEPS + curr.x - start.x)] = 'X';
+        /* m[y][x] = 'v'; */
       }
 
-      int y = curr.y < 0 ?
-
       if (curr.dist < STEPS) {
-        if (m[curr.y % Y_SIZE][(curr.x + 1) % X_SIZE] == '.' &&
-            cs[(STEPS + curr.y) * STEPS * 2 + (STEPS + curr.x + 1)] == 0) {
+        if (m[y][(x + 1) % X_SIZE] == '.' &&
+            cs[(STEPS + curr.y - start.y) * STEPS * 2 +
+               (STEPS + curr.x - start.x + 1)] == 0) {
           n_tmp_size = add_to_nodes(
               &ns_tmp, ++n_tmp_len, n_tmp_size,
               (Node){.y = curr.y, .x = curr.x + 1, .dist = curr.dist + 1});
-          cs[(STEPS + curr.y) * STEPS * 2 + (STEPS + curr.x + 1)] = 'v';
+          cs[(STEPS + curr.y - start.y) * STEPS * 2 +
+             (STEPS + curr.x - start.x + 1)] = 'v';
+          /* m[y][x + 1] = 'v'; */
         }
-        if (m[curr.y % Y_SIZE][(curr.x - 1) % X_SIZE] == '.' &&
-            cs[(STEPS + curr.y) * STEPS * 2 + (STEPS + curr.x - 1)] == 0) {
+        if (m[y][(x - 1 + X_SIZE) % X_SIZE] == '.' &&
+            cs[(STEPS + curr.y - start.y) * STEPS * 2 +
+               (STEPS + curr.x - start.x - 1)] == 0) {
           n_tmp_size = add_to_nodes(
               &ns_tmp, ++n_tmp_len, n_tmp_size,
               (Node){.y = curr.y, .x = curr.x - 1, .dist = curr.dist + 1});
-          cs[(STEPS + curr.y) * STEPS * 2 + (STEPS + curr.x - 1)] = 'v';
+          cs[(STEPS + curr.y - start.y) * STEPS * 2 +
+             (STEPS + curr.x - start.x - 1)] = 'v';
+          /* m[y][x - 1] = 'v'; */
         }
-        if (m[(curr.y + 1) % Y_SIZE][curr.x % X_SIZE] == '.' &&
-            cs[(STEPS + curr.y + 1) * STEPS * 2 + (STEPS + curr.x)] == 0) {
+        if (m[(y + 1) % Y_SIZE][x] == '.' &&
+            cs[(STEPS + curr.y - start.y + 1) * STEPS * 2 +
+               (STEPS + curr.x - start.x)] == 0) {
           n_tmp_size = add_to_nodes(
               &ns_tmp, ++n_tmp_len, n_tmp_size,
               (Node){.y = curr.y + 1, .x = curr.x, .dist = curr.dist + 1});
-          cs[(STEPS + curr.y + 1) * STEPS * 2 + (STEPS + curr.x)] = 'v';
+          cs[(STEPS + curr.y - start.y + 1) * STEPS * 2 +
+             (STEPS + curr.x - start.x)] = 'v';
+          /* m[y + 1][x] = 'v'; */
         }
-        if (m[(curr.y - 1) % Y_SIZE][curr.x % X_SIZE] == '.' &&
-            cs[(STEPS + curr.y - 1) * STEPS * 2 + (STEPS + curr.x)] == 0) {
+        if (m[(y - 1 + Y_SIZE) % Y_SIZE][x] == '.' &&
+            cs[(STEPS + curr.y - start.y - 1) * STEPS * 2 +
+               (STEPS + curr.x - start.x)] == 0) {
           n_tmp_size = add_to_nodes(
               &ns_tmp, ++n_tmp_len, n_tmp_size,
               (Node){.y = curr.y - 1, .x = curr.x, .dist = curr.dist + 1});
-          cs[(STEPS + curr.y - 1) * STEPS * 2 + (STEPS + curr.x)] = 'v';
+          cs[(STEPS + curr.y - start.y - 1) * STEPS * 2 +
+             (STEPS + curr.x - start.x)] = 'v';
+          /* m[y - 1][x] = 'v'; */
         }
       }
     }
@@ -139,6 +154,13 @@ int main() {
       }
     }
   }
+
+  /* for (int i = 0; i < STEPS * 2; i++) { */
+  /*   for (int j = 0; j < STEPS * 2; j++) { */
+  /*     printf("%c", cs[i * STEPS * 2 + j] == 0 ? '.' : cs[i * STEPS * 2 + j]); */
+  /*   } */
+  /*   printf("\n"); */
+  /* } */
 
   for (int i = 0; i < Y_SIZE; i++) {
     for (int j = 0; j < X_SIZE; j++) {
