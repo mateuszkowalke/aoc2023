@@ -6,6 +6,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define X_SIZE 131
+#define Y_SIZE 131
+#define STEPS 26501365
+
 unsigned long long gcd(unsigned long long a, unsigned long long b) {
   while (a != b) {
     if (a > b) {
@@ -18,64 +22,22 @@ unsigned long long gcd(unsigned long long a, unsigned long long b) {
 }
 
 typedef struct {
-  char from[16];
-  bool is_high;
-} Prev_pulse;
+  int y;
+  int x;
+  int dist;
+} Node;
 
-typedef struct module {
-  char type;
-  char name[16];
-  bool is_on;
-  size_t next_len;
-  char next[16][16];
-  size_t prev_len;
-  size_t prev_size;
-  Prev_pulse *prev;
-} Module;
-
-void print_module(Module m) {
-  printf("%c%s, is_on: %d, next modules: ", m.type, m.name, m.is_on);
-  for (int i = 0; i < m.next_len; i++) {
-    printf("%s, ", m.next[i]);
+// returns new size of the nodes list
+// expects n_len to already be increased to accomodate new node
+size_t add_to_nodes(Node **n, size_t n_len, size_t n_size, Node to_add) {
+  if (n_len == n_size) {
+    n_size *= 2;
+    *n = realloc(*n, sizeof(Node) * n_size);
   }
-  printf("previous: ");
-  for (int i = 0; i < m.prev_len; i++) {
-    printf("(%s, was high %d), ", m.prev[i].from, m.prev[i].is_high);
-  }
-  printf("\n");
-}
 
-void add_to_prev(Module *ms, size_t ms_len, char *dest, char *from) {
-  for (int i = 0; i < ms_len; i++) {
-    if (strcmp(ms[i].name, dest) == 0) {
-      ms[i].prev[ms[i].prev_len] = (Prev_pulse){.is_high = false};
-      strcpy(ms[i].prev[ms[i].prev_len].from, from);
-      ms[i].prev_len++;
-      if (ms[i].prev_len == ms[i].prev_size) {
-        ms[i].prev_size *= 2;
-        ms[i].prev = realloc(ms[i].prev, sizeof(Prev_pulse) * ms[i].prev_size);
-      }
-      break;
-    }
-  }
-}
+  (*n)[n_len - 1] = to_add;
 
-typedef struct {
-  bool is_high;
-  char next[16];
-  char from[16];
-} Pulse;
-
-void add_pulse(Pulse **ps, size_t *ps_len, size_t *ps_size, bool is_high,
-               char *next, char *from) {
-  (*ps)[*ps_len] = (Pulse){.is_high = is_high};
-  strcpy((*ps)[*ps_len].next, next);
-  strcpy((*ps)[*ps_len].from, from);
-  (*ps_len)++;
-  if (*ps_len == *ps_size) {
-    *ps_size *= 2;
-    *ps = realloc(*ps, sizeof(Pulse) * *ps_size);
-  }
+  return n_size;
 }
 
 int main() {
@@ -88,215 +50,166 @@ int main() {
   unsigned long long res = 0;
   char *l = NULL;
   size_t n = 0;
-  char *line = NULL;
 
-  size_t ms_len = 0;
-  size_t ms_size = 8;
-  Module *ms = malloc(sizeof(Module) * ms_size);
+  char m[Y_SIZE][X_SIZE];
+  size_t y = 0;
+  Node start = (Node){.y = -1, .x = -1, .dist = 0};
 
   while (getline(&l, &n, f) != -1) {
-    line = l;
-
-    Module m;
-    m.prev_len = 0;
-    m.prev_size = 2;
-    m.prev = malloc(sizeof(Prev_pulse) * m.prev_size);
-    m.next_len = 0;
-    if (*line == '%' || *line == '&') {
-      m.type = *line++;
-      if (m.type == '%') {
-        m.is_on = false;
-      }
-    } else {
-      m.type = 'b';
-    }
-
-    char buf[10];
-    size_t buf_len = 0;
-    char c;
-    while ((c = *line++) != ' ') {
-      buf[buf_len++] = c;
-    }
-    buf[buf_len] = 0;
-    strcpy(m.name, buf);
-
-    while (*line++ != '>')
-      ;
-
-    while (*line != '\n' && *line != '\0') {
-      line++;
-      buf_len = 0;
-      while ((c = *line++) != ',' && c != '\n') {
-        buf[buf_len++] = c;
-      }
-      buf[buf_len] = 0;
-      strcpy(m.next[m.next_len++], buf);
-      while (*line != ' ' && *line != '\n' && *line != '\0') {
-        line++;
+    strncpy(m[y], l, X_SIZE);
+    for (int x = 0; x < X_SIZE; x++) {
+      if (m[y][x] == 'S') {
+        start.y = y;
+        start.x = x;
       }
     }
+    y++;
+  }
 
-    ms[ms_len++] = m;
-    if (ms_len == ms_size) {
-      ms_size *= 2;
-      ms = realloc(ms, sizeof(Module) * ms_size);
+  for (int i = 0; i < Y_SIZE; i++) {
+    for (int j = 0; j < X_SIZE; j++) {
+      printf("%c", m[i][j]);
     }
+    printf("\n");
   }
 
-  for (int i = 0; i < ms_len; i++) {
-    for (int j = 0; j < ms[i].next_len; j++) {
-      add_to_prev(ms, ms_len, ms[i].next[j], ms[i].name);
-    }
-  }
+  size_t n_len = 0;
+  size_t n_size = 8;
+  Node *ns = malloc(sizeof(Node) * n_size);
+  size_t n_tmp_len = 0;
+  size_t n_tmp_size = 8;
+  Node *ns_tmp = malloc(sizeof(Node) * n_tmp_size);
+  ns[n_len++] = start;
+  m[start.y][start.x] = '.';
 
-  for (int i = 0; i < ms_len; i++) {
-    print_module(ms[i]);
-  }
+  unsigned long long odd_score = 0;
+  unsigned long long even_score = 0;
+  unsigned long long odd_corners_score = 0;
+  unsigned long long even_corners_score = 0;
 
-  uint low_ps = 0;
-  uint high_ps = 0;
+  while (n_len > 0) {
+    /* printf("n_len: %zu\n", n_len); */
+    n_tmp_len = 0;
+    for (int i = 0; i < n_len; i++) {
+      Node curr = ns[i];
 
-  size_t ps_len = 0;
-  size_t ps_size = 8;
-  Pulse *ps = malloc(sizeof(Pulse) * ps_size);
-
-  size_t ps_tmp_len = 0;
-  size_t ps_tmp_size = 8;
-  Pulse *ps_tmp = malloc(sizeof(Pulse) * ps_tmp_size);
-
-  bool found = false;
-  unsigned long long iterations = 0;
-
-  // watching inputs to vf, rn, dh and mk
-  // they all have only one input each
-  Module to_watch[4];
-  for (int i = 0; i < ms_len; i++) {
-    if (strcmp(ms[i].name, "vf") == 0) {
-      to_watch[0] = ms[i];
-    } else if (strcmp(ms[i].name, "rn") == 0) {
-      to_watch[1] = ms[i];
-    } else if (strcmp(ms[i].name, "dh") == 0) {
-      to_watch[2] = ms[i];
-    } else if (strcmp(ms[i].name, "mk") == 0) {
-      to_watch[3] = ms[i];
-    }
-  }
-
-  unsigned long long periods[4];
-  int found_periods = 0;
-
-  while (!found) {
-    iterations++;
-    ps[ps_len++] = (Pulse){.is_high = false, .next = "broadcaster"};
-    low_ps++;
-    while (ps_len > 0) {
-      ps_tmp_len = 0;
-      for (int i = 0; i < ps_len; i++) {
-        if (!ps[i].is_high && strcmp(ps[i].next, "rx") == 0) {
-          found = true;
+      if (curr.dist % 2 == 0) {
+        even_score++;
+        if (curr.dist > 64) {
+          even_corners_score++;
         }
-        Pulse p = ps[i];
-        Module *m = NULL;
-        for (int j = 0; j < ms_len; j++) {
-          if (strcmp(ms[j].name, p.next) == 0) {
-            m = &ms[j];
-            break;
-          }
+        m[curr.y][curr.x] = 'O';
+      } else {
+        odd_score++;
+        if (curr.dist > 66) {
+          odd_corners_score++;
         }
-        if (m == NULL) {
-          continue;
-        }
-
-        for (int j = 0; j < 4; j++) {
-          if (strcmp(m->name, to_watch[j].name) == 0 && !ps[i].is_high) {
-            printf("------------------\n");
-            printf("iteration: %llu\n", iterations);
-            printf("pulse: is_high: %d, next: %s, from: %s\n", ps[i].is_high,
-                   ps[i].next, ps[i].from);
-            print_module(*m);
-            periods[j] = iterations;
-            found_periods++;
-            if (found_periods == 4) {
-              found = true;
-            }
-          }
-        }
-
-        if (m->type == '%' && !p.is_high) {
-          if (m->is_on) {
-            m->is_on = false;
-            for (int j = 0; j < m->next_len; j++) {
-              add_pulse(&ps_tmp, &ps_tmp_len, &ps_tmp_size, false, m->next[j],
-                        m->name);
-              low_ps++;
-            }
-          } else {
-            m->is_on = true;
-            for (int j = 0; j < m->next_len; j++) {
-              add_pulse(&ps_tmp, &ps_tmp_len, &ps_tmp_size, true, m->next[j],
-                        m->name);
-              high_ps++;
-            }
-          }
-        } else if (m->type == '&') {
-          bool all_high = true;
-          for (int j = 0; j < m->prev_len; j++) {
-            if (strcmp(p.from, m->prev[j].from) == 0) {
-              m->prev[j].is_high = p.is_high;
-            }
-            if (!m->prev[j].is_high) {
-              all_high = false;
-            }
-          }
-          if (all_high) {
-            for (int j = 0; j < m->next_len; j++) {
-              add_pulse(&ps_tmp, &ps_tmp_len, &ps_tmp_size, false, m->next[j],
-                        m->name);
-              low_ps++;
-            }
-          } else {
-            for (int j = 0; j < m->next_len; j++) {
-              add_pulse(&ps_tmp, &ps_tmp_len, &ps_tmp_size, true, m->next[j],
-                        m->name);
-              high_ps++;
-            }
-          }
-        } else if (m->type == 'b') {
-          for (int j = 0; j < m->next_len; j++) {
-            add_pulse(&ps_tmp, &ps_tmp_len, &ps_tmp_size, false, m->next[j],
-                      m->name);
-            low_ps++;
-          }
-        }
+        m[curr.y][curr.x] = 'E';
       }
 
-      ps_len = 0;
-      for (int i = 0; i < ps_tmp_len; i++) {
-        ps[ps_len].is_high = ps_tmp[i].is_high;
-        strcpy(ps[ps_len].next, ps_tmp[i].next);
-        strcpy(ps[ps_len].from, ps_tmp[i].from);
-        ps_len++;
-        if (ps_len == ps_size) {
-          ps_size *= 2;
-          ps = realloc(ps, sizeof(Pulse) * ps_size);
-        }
+      if (curr.x + 1 < X_SIZE && m[curr.y][curr.x + 1] == '.') {
+        n_tmp_size = add_to_nodes(
+            &ns_tmp, ++n_tmp_len, n_tmp_size,
+            (Node){.y = curr.y, .x = curr.x + 1, .dist = curr.dist + 1});
+        m[curr.y][curr.x + 1] = 'v';
+      }
+      if (curr.x - 1 >= 0 && m[curr.y][curr.x - 1] == '.') {
+        n_tmp_size = add_to_nodes(
+            &ns_tmp, ++n_tmp_len, n_tmp_size,
+            (Node){.y = curr.y, .x = curr.x - 1, .dist = curr.dist + 1});
+        m[curr.y][curr.x - 1] = 'v';
+      }
+      if (curr.y + 1 < Y_SIZE && m[curr.y + 1][curr.x] == '.') {
+        n_tmp_size = add_to_nodes(
+            &ns_tmp, ++n_tmp_len, n_tmp_size,
+            (Node){.y = curr.y + 1, .x = curr.x, .dist = curr.dist + 1});
+        m[curr.y + 1][curr.x] = 'v';
+      }
+      if (curr.y - 1 >= 0 && m[curr.y - 1][curr.x] == '.') {
+        n_tmp_size = add_to_nodes(
+            &ns_tmp, ++n_tmp_len, n_tmp_size,
+            (Node){.y = curr.y - 1, .x = curr.x, .dist = curr.dist + 1});
+        m[curr.y - 1][curr.x] = 'v';
+      }
+    }
+
+    n_len = 0;
+    for (int i = 0; i < n_tmp_len; i++) {
+      ns[n_len++] = ns_tmp[i];
+      if (n_len == n_size) {
+        n_size *= 2;
+        ns = realloc(ns, sizeof(Node) * n_size);
       }
     }
   }
 
-  for (int i = 0; i < 4; i++) {
-    printf("period: %lld\n", periods[i]);
+  int repeats = (STEPS - X_SIZE / 2) / X_SIZE;
+
+  /* for (int y = 0; y < Y_SIZE; y++) { */
+  /*   for (int x = 0; x < X_SIZE; x++) { */
+  /*     if (cs[(y + STEPS) * STEPS * 2 + STEPS + x] == 'X') { */
+  /*       odd_score++; */
+  /*     } */
+  /*   } */
+  /* } */
+  /*  */
+  /* for (int y = 0; y < Y_SIZE; y++) { */
+  /*   for (int x = 0; x < X_SIZE; x++) { */
+  /*     if (cs[(y + STEPS + Y_SIZE) * STEPS * 2 + STEPS + x] == 'X') { */
+  /*       even_score++; */
+  /*     } */
+  /*   } */
+  /* } */
+  /*  */
+  /* for (int y = 0; y < Y_SIZE / 2; y++) { */
+  /*   for (int x = 0; x < Y_SIZE / 2 - y; x++) { */
+  /*     if (cs[(y + STEPS) * STEPS * 2 + STEPS + x] == 'X') { */
+  /*       odd_corner_score++; */
+  /*     } */
+  /*   } */
+  /* } */
+  /*  */
+  /* for (int y = 0; y < Y_SIZE / 2; y++) { */
+  /*   for (int x = 0; x < Y_SIZE / 2 - y; x++) { */
+  /*     if (cs[(y + STEPS + Y_SIZE) * STEPS * 2 + STEPS + x] == 'X') { */
+  /*       even_corner_score++; */
+  /*     } */
+  /*   } */
+  /* } */
+  /*  */
+  if (repeats % 2 == 0) {
+    res = odd_score * (repeats + 1) * (repeats + 1) +
+          even_score * repeats * repeats + even_corners_score * repeats -
+          odd_corners_score * (repeats + 1);
+  } else {
+    res = even_score * (repeats + 1) * (repeats + 1) +
+          odd_score * repeats * repeats + odd_corners_score * repeats -
+          even_corners_score * (repeats + 1);
   }
 
-  res = periods[0];
-  for (int i = 1; i < 4; i++) {
-    res = res * periods[i] / gcd(res, periods[i]);
+  /* for (int i = 0; i < STEPS * 2; i++) { */
+  /*   for (int j = 0; j < STEPS * 2; j++) { */
+  /*     printf("%c", cs[i * STEPS * 2 + j] == 0 ? '.' : cs[i * STEPS * 2 + j]);
+   */
+  /*   } */
+  /*   printf("\n"); */
+  /* } */
+
+  for (int i = 0; i < Y_SIZE; i++) {
+    for (int j = 0; j < X_SIZE; j++) {
+      printf("%c", m[i][j]);
+    }
+    printf("\n");
   }
 
-  printf("low: %d, high: %d\n", low_ps, high_ps);
+  printf("repeats: %d\n", repeats);
+  printf("odd_score: %lld\n", odd_score);
+  printf("odd_corner_score: %lld\n", odd_corners_score);
+  printf("even_score: %lld\n", even_score);
+  printf("even_corner_score: %lld\n", even_corners_score);
   printf("\n");
   printf("\n");
-  printf("%lld", res);
+  printf("%lld\n", res);
   printf("\n");
   fclose(f);
   if (l) {

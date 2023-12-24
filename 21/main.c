@@ -8,7 +8,7 @@
 
 #define X_SIZE 131
 #define Y_SIZE 131
-#define STEPS (size_t)26501365
+#define STEPS 26501365
 
 unsigned long long gcd(unsigned long long a, unsigned long long b) {
   while (a != b) {
@@ -66,9 +66,6 @@ int main() {
     y++;
   }
 
-  size_t cs_size = (STEPS * 2 + 1) * (STEPS * 2 + 1);
-  char *cs = calloc(cs_size, sizeof(char));
-
   for (int i = 0; i < Y_SIZE; i++) {
     for (int j = 0; j < X_SIZE; j++) {
       printf("%c", m[i][j]);
@@ -85,63 +82,54 @@ int main() {
   ns[n_len++] = start;
   m[start.y][start.x] = '.';
 
+  unsigned long long odd_score = 0;
+  unsigned long long even_score = 0;
+  unsigned long long odd_corners_score = 0;
+  unsigned long long even_corners_score = 0;
+
   while (n_len > 0) {
     /* printf("n_len: %zu\n", n_len); */
     n_tmp_len = 0;
     for (int i = 0; i < n_len; i++) {
       Node curr = ns[i];
 
-      int y = curr.y < 0 ? (curr.y % Y_SIZE + Y_SIZE) % Y_SIZE : curr.y % Y_SIZE;
-      int x = curr.x < 0 ? (curr.x % X_SIZE + X_SIZE) % X_SIZE : curr.x % X_SIZE;
-
       if (curr.dist % 2 == 0) {
-        res++;
-        cs[(STEPS + curr.y - start.y) * STEPS * 2 +
-           (STEPS + curr.x - start.x)] = 'X';
-        /* m[y][x] = 'v'; */
+        even_score++;
+        if (curr.dist > 64) {
+          even_corners_score++;
+        }
+        m[curr.y][curr.x] = 'O';
+      } else {
+        odd_score++;
+        if (curr.dist > 66) {
+          odd_corners_score++;
+        }
+        m[curr.y][curr.x] = 'E';
       }
 
-      if (curr.dist < STEPS) {
-        if (m[y][(x + 1) % X_SIZE] == '.' &&
-            cs[(STEPS + curr.y - start.y) * STEPS * 2 +
-               (STEPS + curr.x - start.x + 1)] == 0) {
-          n_tmp_size = add_to_nodes(
-              &ns_tmp, ++n_tmp_len, n_tmp_size,
-              (Node){.y = curr.y, .x = curr.x + 1, .dist = curr.dist + 1});
-          cs[(STEPS + curr.y - start.y) * STEPS * 2 +
-             (STEPS + curr.x - start.x + 1)] = 'v';
-          /* m[y][x + 1] = 'v'; */
-        }
-        if (m[y][(x - 1 + X_SIZE) % X_SIZE] == '.' &&
-            cs[(STEPS + curr.y - start.y) * STEPS * 2 +
-               (STEPS + curr.x - start.x - 1)] == 0) {
-          n_tmp_size = add_to_nodes(
-              &ns_tmp, ++n_tmp_len, n_tmp_size,
-              (Node){.y = curr.y, .x = curr.x - 1, .dist = curr.dist + 1});
-          cs[(STEPS + curr.y - start.y) * STEPS * 2 +
-             (STEPS + curr.x - start.x - 1)] = 'v';
-          /* m[y][x - 1] = 'v'; */
-        }
-        if (m[(y + 1) % Y_SIZE][x] == '.' &&
-            cs[(STEPS + curr.y - start.y + 1) * STEPS * 2 +
-               (STEPS + curr.x - start.x)] == 0) {
-          n_tmp_size = add_to_nodes(
-              &ns_tmp, ++n_tmp_len, n_tmp_size,
-              (Node){.y = curr.y + 1, .x = curr.x, .dist = curr.dist + 1});
-          cs[(STEPS + curr.y - start.y + 1) * STEPS * 2 +
-             (STEPS + curr.x - start.x)] = 'v';
-          /* m[y + 1][x] = 'v'; */
-        }
-        if (m[(y - 1 + Y_SIZE) % Y_SIZE][x] == '.' &&
-            cs[(STEPS + curr.y - start.y - 1) * STEPS * 2 +
-               (STEPS + curr.x - start.x)] == 0) {
-          n_tmp_size = add_to_nodes(
-              &ns_tmp, ++n_tmp_len, n_tmp_size,
-              (Node){.y = curr.y - 1, .x = curr.x, .dist = curr.dist + 1});
-          cs[(STEPS + curr.y - start.y - 1) * STEPS * 2 +
-             (STEPS + curr.x - start.x)] = 'v';
-          /* m[y - 1][x] = 'v'; */
-        }
+      if (curr.x + 1 < X_SIZE && m[curr.y][curr.x + 1] == '.') {
+        n_tmp_size = add_to_nodes(
+            &ns_tmp, ++n_tmp_len, n_tmp_size,
+            (Node){.y = curr.y, .x = curr.x + 1, .dist = curr.dist + 1});
+        m[curr.y][curr.x + 1] = 'v';
+      }
+      if (curr.x - 1 >= 0 && m[curr.y][curr.x - 1] == '.') {
+        n_tmp_size = add_to_nodes(
+            &ns_tmp, ++n_tmp_len, n_tmp_size,
+            (Node){.y = curr.y, .x = curr.x - 1, .dist = curr.dist + 1});
+        m[curr.y][curr.x - 1] = 'v';
+      }
+      if (curr.y + 1 < Y_SIZE && m[curr.y + 1][curr.x] == '.') {
+        n_tmp_size = add_to_nodes(
+            &ns_tmp, ++n_tmp_len, n_tmp_size,
+            (Node){.y = curr.y + 1, .x = curr.x, .dist = curr.dist + 1});
+        m[curr.y + 1][curr.x] = 'v';
+      }
+      if (curr.y - 1 >= 0 && m[curr.y - 1][curr.x] == '.') {
+        n_tmp_size = add_to_nodes(
+            &ns_tmp, ++n_tmp_len, n_tmp_size,
+            (Node){.y = curr.y - 1, .x = curr.x, .dist = curr.dist + 1});
+        m[curr.y - 1][curr.x] = 'v';
       }
     }
 
@@ -155,9 +143,54 @@ int main() {
     }
   }
 
+  int repeats = (STEPS - X_SIZE / 2) / X_SIZE;
+
+  /* for (int y = 0; y < Y_SIZE; y++) { */
+  /*   for (int x = 0; x < X_SIZE; x++) { */
+  /*     if (cs[(y + STEPS) * STEPS * 2 + STEPS + x] == 'X') { */
+  /*       odd_score++; */
+  /*     } */
+  /*   } */
+  /* } */
+  /*  */
+  /* for (int y = 0; y < Y_SIZE; y++) { */
+  /*   for (int x = 0; x < X_SIZE; x++) { */
+  /*     if (cs[(y + STEPS + Y_SIZE) * STEPS * 2 + STEPS + x] == 'X') { */
+  /*       even_score++; */
+  /*     } */
+  /*   } */
+  /* } */
+  /*  */
+  /* for (int y = 0; y < Y_SIZE / 2; y++) { */
+  /*   for (int x = 0; x < Y_SIZE / 2 - y; x++) { */
+  /*     if (cs[(y + STEPS) * STEPS * 2 + STEPS + x] == 'X') { */
+  /*       odd_corner_score++; */
+  /*     } */
+  /*   } */
+  /* } */
+  /*  */
+  /* for (int y = 0; y < Y_SIZE / 2; y++) { */
+  /*   for (int x = 0; x < Y_SIZE / 2 - y; x++) { */
+  /*     if (cs[(y + STEPS + Y_SIZE) * STEPS * 2 + STEPS + x] == 'X') { */
+  /*       even_corner_score++; */
+  /*     } */
+  /*   } */
+  /* } */
+  /*  */
+  if (repeats % 2 == 0) {
+    res = odd_score * (repeats + 1) * (repeats + 1) +
+          even_score * repeats * repeats + even_corners_score * repeats -
+          odd_corners_score * (repeats + 1);
+  } else {
+    res = even_score * (repeats + 1) * (repeats + 1) +
+          odd_score * repeats * repeats + odd_corners_score * repeats -
+          even_corners_score * (repeats + 1);
+  }
+
   /* for (int i = 0; i < STEPS * 2; i++) { */
   /*   for (int j = 0; j < STEPS * 2; j++) { */
-  /*     printf("%c", cs[i * STEPS * 2 + j] == 0 ? '.' : cs[i * STEPS * 2 + j]); */
+  /*     printf("%c", cs[i * STEPS * 2 + j] == 0 ? '.' : cs[i * STEPS * 2 + j]);
+   */
   /*   } */
   /*   printf("\n"); */
   /* } */
@@ -169,6 +202,11 @@ int main() {
     printf("\n");
   }
 
+  printf("repeats: %d\n", repeats);
+  printf("odd_score: %lld\n", odd_score);
+  printf("odd_corner_score: %lld\n", odd_corners_score);
+  printf("even_score: %lld\n", even_score);
+  printf("even_corner_score: %lld\n", even_corners_score);
   printf("\n");
   printf("\n");
   printf("%lld\n", res);
